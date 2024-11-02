@@ -1,0 +1,21 @@
+[project]
+name = "dataprepviz"
+version = "0.1.0"
+description = "Application to view preprocessing and augmentation for various data types"
+authors = [{ name = "Jyothish", email = "jkcg dot learning at gmail dot com" }]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "nltk>=3.9.1",
+    "numpy>=2.1.2",
+    "numpy-stl>=3.1.2",
+    "opencv-python>=4.10.0.84",
+    "pillow>=10.4.0",
+    "plotly>=5.24.1",
+    "pydub>=0.25.1",
+    "scipy>=1.14.1",
+    "streamlit>=1.39.0",
+    "torch>=2.5.1",
+    "torchaudio>=2.5.1",
+    "torchvision>=0.20.1",
+]

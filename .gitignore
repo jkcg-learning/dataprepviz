@@ -1,0 +1,136 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.lock
+
+# C extensions
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+*.eggs/
+*.egg
+build/
+dist/
+pip-wheel-metadata/
+
+# PyInstaller
+# Usually contains the result of PyInstaller builds
+build/
+dist/
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# Pytest cache
+.pytest_cache/
+.cache/
+
+# MyPy cache
+.mypy_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.cache
+
+# Test results
+*.pytest_cache/
+.tox/
+*.hypothesis/
+noxfile.py
+
+# Logs and debug files
+*.log
+*.out
+*.err
+
+# Config files and settings
+config.json
+*.config
+*.conf
+*.cfg
+
+# Environment variables
+.env
+.env.*
+.secret
+.secret.*
+
+# Data files and databases
+data/
+datasets/
+*.db
+*.sqlite3
+*.json
+*.h5
+*.csv
+*.tsv
+
+# Machine learning model files
+*.h5
+*.hdf5
+*.pkl
+*.joblib
+*.ckpt
+*.pb
+*.pt
+*.tflite
+*.onnx
+*.tfrecord
+
+# Intermediate data files
+*.npz
+*.npy
+*.pkl
+
+# Experiment files
+wandb/
+mlruns/
+logs/
+tensorboard/
+
+# IDE configurations
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS-specific files
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*.swp
+*~
+.cache/
+.local/
+.history
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Global/operating system files
+.trash/
+.trashinfo
