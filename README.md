@@ -68,6 +68,26 @@ Enhance your dataset's diversity with powerful augmentation techniques:
 
 - Easily download any preprocessed or augmented image in your preferred format (**PNG** or **JPEG**) with just a click.
 
+### **Text Preprocessing**
+
+- **Tokenization:** 
+  - Split text into individual tokens (words).
+- **Padding/Truncating:** 
+  - Ensure uniform text length by padding shorter texts with `<PAD>` tokens or truncating longer texts to a specified maximum length.
+- **Embedding:** 
+  - Convert tokens into numerical vectors using pre-trained BERT embeddings.
+- **Token Counting:** 
+  - Count the number of tokens using `tiktoken` for efficient processing.
+
+### **Text Augmentation**
+- **Synonym Replacement:** 
+  - Replace a specified number of words with their synonyms to enhance text diversity.
+- **Random Insertion:** 
+  - Insert synonyms of random words into the text.
+- **Random Deletion:** 
+  - Remove words from the text based on a specified probability.
+
+
 ### ⚡ Performance Optimizations
 
 - **Caching Mechanisms**: Leveraging Streamlit's caching (`@st.cache_data`) to ensure efficient processing and rapid response times, especially with large datasets.
