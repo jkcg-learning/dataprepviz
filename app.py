@@ -3,6 +3,8 @@ from modules.image.preprocessing import image_preprocessing_tab
 from modules.image.augmentation import image_augmentation_tab
 from modules.text.preprocessing import text_preprocessing_tab
 from modules.text.augmentation import text_augmentation_tab
+from modules.audio.preprocessing import audio_preprocessing_tab
+from modules.audio.augmentation import audio_augmentation_tab
 
 def main():
     st.set_page_config(page_title="DataPrepViz", layout="wide")
@@ -23,6 +25,11 @@ def main():
             text_preprocessing_tab()
         elif operation == "Augmentation":
             text_augmentation_tab()
+    elif data_type == "Audio":
+        if operation == "Preprocessing":
+            audio_preprocessing_tab()
+        elif operation == "Augmentation":
+            audio_augmentation_tab()
     else:
         st.warning("🚧 This feature is under construction. Stay tuned for updates!")
 

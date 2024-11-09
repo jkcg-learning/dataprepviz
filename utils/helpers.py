@@ -1,4 +1,3 @@
-# utils/helpers.py
 
 import numpy as np
 import cv2
@@ -8,6 +7,12 @@ from nltk.corpus import wordnet
 from nltk.tokenize import word_tokenize
 import tiktoken
 from transformers import BertTokenizer
+import torchaudio
+import torch
+from io import BytesIO
+import soundfile as sf
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Ensure NLTK data is downloaded
 import nltk
@@ -332,3 +337,157 @@ def apply_text_augmentation(text, augmentation_type='Synonym Replacement', n=1, 
     #    return back_translation(text)
     else:
         return text
+    
+# ======================
+# Audio Preprocessing Functions
+# ======================
+
+@st.cache_data
+def resample_audio(_audio, orig_sr, target_sr=16000):
+    """Resample audio to a target sampling rate."""
+    resampler = torchaudio.transforms.Resample(orig_freq=orig_sr, new_freq=target_sr)
+    resampled_audio = resampler(_audio)
+    return resampled_audio
+
+@st.cache_data
+def extract_mfcc(_audio, sample_rate=16000, n_mfcc=40):
+    """Extract MFCC features from audio."""
+    n_mels = 23  # Ensure n_mfcc <= n_mels
+    if n_mfcc > n_mels:
+        raise ValueError(f"Number of MFCC coefficients ({n_mfcc}) cannot exceed number of mel bins ({n_mels}).")
+    mfcc_transform = torchaudio.transforms.MFCC(
+        sample_rate=sample_rate,
+        n_mfcc=n_mfcc,
+        melkwargs={
+            'n_fft': 400,
+            'hop_length': 160,
+            'n_mels': n_mels,
+            'center': False
+        }
+    )
+    mfcc = mfcc_transform(_audio)
+    return mfcc
+
+@st.cache_data
+def count_audio_tokens(_audio):
+    """Count the number of audio tokens using tiktoken."""
+    encoding = tiktoken.get_encoding("gpt2")
+    tokens = encoding.encode(str(_audio))
+    return len(tokens)
+
+# ======================
+# Audio Augmentation Functions
+# ======================
+
+def time_stretch(audio, rate=1.0):
+    """Stretch the audio in time by a given rate using torchaudio's sox_effects."""
+    effects = [['tempo', str(rate)]]
+    augmented_audio, sample_rate = torchaudio.sox_effects.apply_effects_tensor(audio, 16000, effects)
+    return augmented_audio
+
+def pitch_shift(audio, sample_rate=16000, n_steps=0):
+    """Shift the pitch of the audio by n_steps semitones using torchaudio's sox_effects."""
+    # SoX 'pitch' effect uses cents; 1 semitone = 100 cents
+    shift_cents = n_steps * 100
+    effects = [['pitch', str(shift_cents)], ['rate', str(sample_rate)]]
+    augmented_audio, sample_rate = torchaudio.sox_effects.apply_effects_tensor(audio, sample_rate, effects)
+    return augmented_audio
+
+def add_background_noise(signal, noise_factor=0.005):
+    """Add background noise to the audio signal."""
+    noise = torch.randn_like(signal)
+    augmented_signal = signal + noise_factor * noise
+    return augmented_signal
+
+def random_gain(audio, gain_min=0.8, gain_max=1.2):
+    """Randomly adjust the gain of the audio signal."""
+    gain = np.random.uniform(gain_min, gain_max)
+    return audio * gain
+
+def random_silence(audio, min_silence=0.1, max_silence=0.5):
+    """Insert random silence into the audio signal."""
+    silence_duration = np.random.uniform(min_silence, max_silence)
+    num_channels = audio.shape[0]  # Assuming shape is [channels, samples]
+    silence = torch.zeros((num_channels, int(silence_duration * 16000)))
+    insert_position = np.random.randint(0, audio.shape[1])
+    augmented_audio = torch.cat((audio[:, :insert_position], silence, audio[:, insert_position:]), dim=1)
+    return augmented_audio
+
+# ======================
+# Audio Encoding Function
+# ======================
+
+def encode_audio_to_wav(audio_tensor, sample_rate):
+    """
+    Encode a Torch audio tensor to WAV format and return as BytesIO object.
+
+    Parameters:
+    - audio_tensor (torch.Tensor): Audio data tensor with shape [channels, samples].
+    - sample_rate (int): Sampling rate of the audio.
+
+    Returns:
+    - BytesIO: Byte stream of the encoded WAV audio.
+    """
+    buffer = BytesIO()
+    # Transpose the tensor to [samples, channels] if necessary
+    if audio_tensor.ndim == 2:
+        audio = audio_tensor.numpy().T
+    else:
+        audio = audio_tensor.numpy()
+    sf.write(buffer, audio, sample_rate, format='WAV')
+    buffer.seek(0)
+    return buffer
+
+# ======================
+# Waveform Plotting Function
+# ======================
+
+def plot_waveform(audio_tensor, sample_rate, title="Waveform"):
+    """
+    Plot the waveform of an audio tensor.
+
+    Parameters:
+    - audio_tensor (torch.Tensor): Audio data tensor with shape [channels, samples].
+    - sample_rate (int): Sampling rate of the audio.
+    - title (str): Title of the plot.
+
+    Returns:
+    - BytesIO: Byte stream of the plotted waveform image.
+    """
+    plt.figure(figsize=(10, 4))
+    for channel in audio_tensor:
+        plt.plot(channel.numpy(), alpha=0.5)
+    plt.title(title)
+    plt.xlabel("Samples")
+    plt.ylabel("Amplitude")
+    plt.tight_layout()
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    plt.close()
+    return buf
+
+# ======================
+# MFCC Feature Plotting Function
+# ======================
+
+def plot_mfcc_heatmap(mfcc_tensor, title="MFCC Features"):
+    """
+    Plot the MFCC features as a heatmap.
+
+    Parameters:
+    - mfcc_tensor (torch.Tensor): MFCC features tensor with shape [channels, n_mfcc, time].
+    - title (str): Title of the plot.
+
+    Returns:
+    - matplotlib.figure.Figure: The matplotlib figure object.
+    """
+    fig, ax = plt.subplots(figsize=(10, 4))
+    mfcc_np = mfcc_tensor.numpy()
+    for channel in range(mfcc_np.shape[0]):
+        sns.heatmap(mfcc_np[channel], ax=ax, cmap='viridis', cbar=True)
+    ax.set_title(title)
+    ax.set_xlabel("Time Frames")
+    ax.set_ylabel("MFCC Coefficients")
+    plt.tight_layout()
+    return fig
