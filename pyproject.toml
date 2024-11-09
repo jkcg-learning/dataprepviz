@@ -20,4 +20,7 @@ dependencies = [
     "torchvision>=0.20.1",
     "matplotlib==3.9",
     "albumentations>=1.4.21",
+    "tiktoken>=0.8.0",
+    "transformers>=4.46.2",
+    "googletrans>=3.0.0",
 ]

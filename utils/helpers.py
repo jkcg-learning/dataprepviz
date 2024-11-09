@@ -4,6 +4,17 @@ import numpy as np
 import cv2
 import albumentations as A
 import streamlit as st
+from nltk.corpus import wordnet
+from nltk.tokenize import word_tokenize
+import tiktoken
+from transformers import BertTokenizer
+
+# Ensure NLTK data is downloaded
+import nltk
+nltk.download('punkt')
+nltk.download('wordnet')
+nltk.download('punkt_tab')
+
 
 # ======================
 # Preprocessing Functions
@@ -186,3 +197,138 @@ def apply_laplacian_edge_detection(image):
     laplacian = np.uint8(np.absolute(laplacian))
     laplacian_rgb = cv2.cvtColor(laplacian, cv2.COLOR_GRAY2RGB)
     return laplacian_rgb
+
+# ======================
+# Text Preprocessing Functions
+# ======================
+
+@st.cache_data
+def tokenize_text(text):
+    """Tokenize the input text into tokens."""
+    tokens = word_tokenize(text)
+    return tokens
+
+@st.cache_data
+def pad_truncate_text(tokens, max_length=50):
+    """Pad or truncate the token list to a fixed length."""
+    if len(tokens) < max_length:
+        tokens += ['<PAD>'] * (max_length - len(tokens))
+    else:
+        tokens = tokens[:max_length]
+    return tokens
+
+@st.cache_data
+def embed_text(tokens):
+    """Embed tokens using pre-trained BERT embeddings."""
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    embedded = tokenizer.convert_tokens_to_ids(tokens)
+    return embedded
+
+@st.cache_data
+def count_tokens(text):
+    """Count the number of tokens in the text using tiktoken."""
+    encoding = tiktoken.get_encoding("gpt2")
+    tokens = encoding.encode(text)
+    return len(tokens)
+
+# ======================
+# Text Augmentation Functions
+# ======================
+
+def get_synonyms(word):
+    """Retrieve synonyms for a given word using WordNet."""
+    synonyms = set()
+    for syn in wordnet.synsets(word):
+        for lemma in syn.lemmas():
+            synonym = lemma.name().replace('_', ' ').lower()
+            if synonym != word.lower():
+                synonyms.add(synonym)
+    return list(synonyms)
+
+def synonym_replacement(text, n=1):
+    """Replace n words in the text with their synonyms."""
+    tokens = word_tokenize(text)
+    new_tokens = tokens.copy()
+    words = [word for word in tokens if wordnet.synsets(word)]
+    if len(words) == 0:
+        return text
+    n = min(n, len(words))
+    words_to_replace = np.random.choice(words, n, replace=False)
+    for word in words_to_replace:
+        synonyms = get_synonyms(word)
+        if synonyms:
+            synonym = np.random.choice(synonyms)
+            new_tokens = [synonym if w == word else w for w in new_tokens]
+    return ' '.join(new_tokens)
+
+def random_insertion(text, n=1):
+    """Insert n random synonyms into the text."""
+    tokens = word_tokenize(text)
+    new_tokens = tokens.copy()
+    for _ in range(n):
+        add_synonym(new_tokens)
+    return ' '.join(new_tokens)
+
+def add_synonym(tokens):
+    """Add a synonym of a random word in the tokens."""
+    words = [word for word in tokens if wordnet.synsets(word)]
+    if not words:
+        return tokens
+    word = np.random.choice(words)
+    synonyms = get_synonyms(word)
+    if synonyms:
+        synonym = np.random.choice(synonyms)
+        insert_idx = np.random.randint(0, len(tokens) + 1)
+        tokens.insert(insert_idx, synonym)
+    return tokens
+
+def random_deletion(text, p=0.1):
+    """Randomly delete words from the text with probability p."""
+    tokens = word_tokenize(text)
+    if len(tokens) == 0:
+        return text
+    new_tokens = [word for word in tokens if np.random.rand() > p]
+    if len(new_tokens) == 0:
+        return np.random.choice(tokens)
+    return ' '.join(new_tokens)
+
+def back_translation(text, src_lang='en', tgt_lang='fr'):
+    """
+    Perform back translation by translating the text to another language and back.
+    Requires external translation API or library.
+    Placeholder function as implementation depends on the chosen library/API.
+    """
+    # Implement using a translation library like googletrans
+    # from googletrans import Translator
+    # translator = Translator()
+    # translated = translator.translate(text, src=src_lang, dest=tgt_lang).text
+    # back_translated = translator.translate(translated, src=tgt_lang, dest=src_lang).text
+    #return back_translated
+    return text
+
+@st.cache_data
+def apply_text_preprocessing(text, max_length=50):
+    """Apply all preprocessing steps to the text."""
+    tokens = tokenize_text(text)
+    tokens = pad_truncate_text(tokens, max_length=max_length)
+    embedded = embed_text(tokens)
+    token_count = count_tokens(text)
+    return {
+        'tokens': tokens,
+        'embedded': embedded,
+        'token_count': token_count
+    }
+
+@st.cache_data
+def apply_text_augmentation(text, augmentation_type='Synonym Replacement', n=1, p=0.1):
+    """Apply specified augmentation to the text."""
+    if augmentation_type == 'Synonym Replacement':
+        return synonym_replacement(text, n)
+    elif augmentation_type == 'Random Insertion':
+        return random_insertion(text, n)
+    elif augmentation_type == 'Random Deletion':
+        return random_deletion(text, p)
+    # elif augmentation_type == 'Back Translation':
+    #    return back_translation(text)
+    else:
+        return text
