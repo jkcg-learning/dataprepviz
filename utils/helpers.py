@@ -13,6 +13,10 @@ from io import BytesIO
 import soundfile as sf
 import matplotlib.pyplot as plt
 import seaborn as sns
+import trimesh
+import random
+import math
+import plotly.graph_objects as go
 
 # Ensure NLTK data is downloaded
 import nltk
@@ -490,4 +494,90 @@ def plot_mfcc_heatmap(mfcc_tensor, title="MFCC Features"):
     ax.set_xlabel("Time Frames")
     ax.set_ylabel("MFCC Coefficients")
     plt.tight_layout()
+    return fig
+
+# ======================
+# 3D Data Preprocessing Functions
+# ======================
+def load_mesh(file_obj, file_extension):
+    """Load a 3D mesh from a file object based on file extension."""
+    # Determine file type based on extension
+    if file_extension in ['obj', 'stl', 'ply']:
+        mesh = trimesh.load(file_obj, file_type=file_extension)
+    else:
+        raise ValueError(f"File type: {file_extension} not supported")
+    return mesh
+
+def normalize_mesh(mesh):
+    """Normalize the mesh to fit within a unit sphere."""
+    vertices = mesh.vertices - mesh.center_mass
+    scale = np.max(np.linalg.norm(vertices, axis=1))
+    vertices /= scale
+    mesh.vertices = vertices
+    return mesh
+
+# ======================
+# 3D Data Augmentation Functions
+# ======================
+
+def random_rotation(mesh):
+    """Apply a random rotation to the mesh."""
+    theta = random.uniform(0, 2 * math.pi)
+    rotation_matrix = trimesh.transformations.rotation_matrix(
+        angle=theta,
+        direction=[0, 0, 1],
+        point=mesh.centroid
+    )
+    mesh.apply_transform(rotation_matrix)
+    return mesh
+
+def scale_mesh(mesh, scale_factor=None):
+    """Scale the mesh by a factor."""
+    if scale_factor is None:
+        scale_factor = random.uniform(0.8, 1.2)
+    mesh.apply_scale(scale_factor)
+    return mesh
+
+def add_noise(mesh, noise_level=0.01):
+    """Add random noise to the mesh vertices."""
+    noise = np.random.normal(0, noise_level, mesh.vertices.shape)
+    mesh.vertices += noise
+    return mesh
+
+def center_mesh(mesh):
+    """Center the mesh to the origin."""
+    mesh.vertices -= mesh.center_mass
+    return mesh
+
+# ======================
+# 3D Visualization Function
+# ======================
+
+def plot_mesh(mesh, title="Mesh"):
+    """Plot the mesh using Plotly."""
+    x, y, z = mesh.vertices.T
+    i, j, k = mesh.faces.T
+
+    mesh_data = go.Mesh3d(
+        x=x,
+        y=y,
+        z=z,
+        i=i,
+        j=j,
+        k=k,
+        color='lightblue',
+        opacity=0.50
+    )
+
+    layout = go.Layout(
+        title=title,
+        scene=dict(
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            zaxis=dict(visible=False),
+            aspectmode='data'
+        )
+    )
+
+    fig = go.Figure(data=[mesh_data], layout=layout)
     return fig

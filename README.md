@@ -2,7 +2,12 @@
 
 ## 📊 **Overview**
 
-**DataPrepViz** is an interactive web application designed to streamline the data preprocessing and augmentation workflow for various data types. Built with Streamlit, it offers a user-friendly interface to apply a wide range of transformations to your data, enhancing its quality and suitability for machine learning models. Currently focused on **Image**, **Text**, and **Audio** data, DataPrepViz is architected to seamlessly extend support to other data types such as **3D** in the future.
+**DataPrepViz** is an interactive web application designed to streamline the data preprocessing and augmentation workflow for various data types. Built with Streamlit, it offers a user-friendly interface to apply a wide range of transformations to your data, enhancing its quality and suitability for machine learning models. Currently focused on **Image**, **Text**, and **Audio** data and **3D** data. 
+
+![image](assets/image_1.png)
+![text](assets/text_1.png)
+![audio](assets/audio_1.png)
+![3D](assets/3d_1.png)
 
 ## 🚀 **Features**
 
@@ -175,6 +180,59 @@ Increase the diversity of your audio data using various augmentation techniques:
 #### **Download Options:**
 
 - **Augmented Audios:** Download as `.wav` files.
+
+----------------------------------------------------------------
+
+### 📐 **3D Data Preprocessing**
+
+Enhance and prepare your 3D data using various preprocessing techniques:
+
+- **Normalization**
+  - **Description:** Scale the mesh to fit within a unit sphere.
+  - **Usage:** Apply normalization to standardize the size of your 3D models.
+
+- **Centering**
+  - **Description:** Shift the mesh to center it at the origin.
+  - **Usage:** Center your 3D models to ensure consistent positioning.
+
+#### **Supported Formats:**
+- **File Types:** `.OBJ`, `.STL`, `.PLY`
+
+#### **Download Options:**
+- **Processed Meshes:** Download as `.obj` files.
+
+### 🎲 **3D Data Augmentation**
+
+Increase the diversity of your 3D data using various augmentation techniques:
+
+- **Random Rotation**
+  - **Description:** Apply a random rotation around the Z-axis.
+  - **Usage:** Randomly rotate your 3D models to simulate different orientations.
+
+- **Scaling**
+  - **Description:** Scale your mesh by a specified factor.
+  - **Controls:**
+    - **Scale Factor:** Adjust between 0.5 and 1.5.
+  - **Usage:** Scale your 3D models to simulate size variations.
+
+- **Adding Noise**
+  - **Description:** Add random Gaussian noise to the mesh vertices.
+  - **Controls:**
+    - **Noise Level:** Adjust between 0.0 and 0.1.
+  - **Usage:** Introduce slight variations to your 3D models to enhance robustness.
+
+- **Reflection (Mirroring)**
+  - **Description:** Reflect the mesh across the X, Y, or Z axis.
+  - **Usage:** Generate mirrored versions of your 3D models.
+
+- **Shearing**
+  - **Description:** Apply a shearing transformation to distort the mesh.
+  - **Controls:**
+    - **Shear Level:** Adjust between -0.5 and 0.5.
+  - **Usage:** Distort your 3D models to simulate perspective changes.
+
+#### **Download Options:**
+- **Augmented Meshes:** Download as `.obj` files.
 
 ----------------------------------------------------------------
 
