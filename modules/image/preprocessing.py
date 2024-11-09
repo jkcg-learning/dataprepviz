@@ -7,7 +7,14 @@ from utils.helpers import (
     apply_noise,
     apply_salt_pepper_noise,
     apply_sobel_edge_detection,
-    apply_laplacian_edge_detection
+    apply_laplacian_edge_detection,
+    apply_resize,
+    apply_grayscale,
+    apply_blur,
+    apply_edge_detection,
+    apply_contrast_brightness,
+    apply_color_space,
+    apply_normalization
 )
 from PIL import Image
 from io import BytesIO
@@ -89,64 +96,23 @@ def apply_normalization(image):
     normalized = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX)
     return normalized
 
-def preprocess_image_all(
-    image, resize_dim, resize_width, resize_height, normalize, grayscale, blur_type, blur_kernel,
-    edge_algorithm, contrast_alpha, brightness_beta, color_space, noise_type, noise_level
-):
-    """Apply all selected preprocessing steps to the image."""
-    img = image.copy()
-
-    # Apply Resize
-    if resize_dim:
-        img = apply_resize(img, resize_width, resize_height)
-
-    # Apply Color Space Conversion
-    if color_space != 'RGB':
-        img = apply_color_space(img, color_space)
-
-    # Apply Grayscale Conversion
-    if grayscale:
-        img = apply_grayscale(img)
-
-    # Apply Blurring
-    if blur_type != 'None':
-        img = apply_blur(img, blur_type, blur_kernel)
-
-    # Apply Edge Detection
-    if edge_algorithm != 'None':
-        img = apply_edge_detection(img, edge_algorithm)
-
-    # Apply Contrast and Brightness Adjustment
-    if contrast_alpha != 1.0 or brightness_beta != 0:
-        img = apply_contrast_brightness(img, contrast_alpha, brightness_beta)
-
-    # Apply Normalization
-    if normalize:
-        img = apply_normalization(img)
-
-    # Apply Noise Addition
-    if noise_type != 'None':
-        if noise_type == 'Gaussian':
-            img = apply_noise(img, noise_type='gaussian', noise_level=noise_level)
-        elif noise_type == 'Salt & Pepper':
-            img = apply_salt_pepper_noise(img, noise_level=noise_level)
-
-    return img
-
 def image_preprocessing_tab():
     st.header("🎨 Image Preprocessing")
     st.markdown("""
-    Enhance and prepare your images using various preprocessing techniques.
+    Enhance and prepare your images using various preprocessing techniques. The default preprocessings are applied automatically upon image upload. You can adjust parameters and reapply transformations as needed.
     """)
 
     # Initialize session state for images
-    if 'original_image' not in st.session_state:
-        st.session_state.original_image = None
-    # Initialize individual preprocessed images
+    if 'original_pre_image' not in st.session_state:
+        st.session_state.original_pre_image = None
+    # Initialize preprocessed images
     preprocessed_keys = [
-        'resize_image', 'contrast_brightness_image',
-        'blur_image', 'noise_image',
-        'edge_image', 'color_space_image',
+        'resize_image',
+        'contrast_brightness_image',
+        'blur_image',
+        'noise_image',
+        'edge_image',
+        'color_space_image',
         'grayscale_image'  # Added Grayscale
     ]
     for key in preprocessed_keys:
@@ -154,89 +120,105 @@ def image_preprocessing_tab():
             st.session_state[key] = None
 
     # File Uploader
-    uploaded_image = st.file_uploader("📁 Upload Image", type=['png', 'jpg', 'jpeg'])
+    uploaded_image = st.file_uploader("📁 Upload Image for Preprocessing", type=['png', 'jpg', 'jpeg'])
 
     if uploaded_image is not None:
         image = load_image_cv2(uploaded_image)
 
         if image is not None:
             # Store original image in session state
-            if st.session_state.original_image is None:
-                st.session_state.original_image = image.copy()
+            if st.session_state.original_pre_image is None:
+                st.session_state.original_pre_image = image.copy()
 
             # Display Original Image
             st.subheader("📷 Original Image")
-            st.image(st.session_state.original_image, caption="Original Image", use_container_width=True)
+            st.image(st.session_state.original_pre_image, caption="Original Image", use_container_width=True)
 
             st.markdown("---")
 
-            # Define Preprocessing Techniques in Desired Order
-            techniques = [
+            # Apply all preprocessing with default parameters
+            if st.session_state.resize_image is None:
+                st.session_state.resize_image = apply_resize(st.session_state.original_pre_image, width=224, height=224)
+            if st.session_state.contrast_brightness_image is None:
+                st.session_state.contrast_brightness_image = apply_contrast_brightness(st.session_state.original_pre_image, alpha=1.0, beta=0)
+            if st.session_state.blur_image is None:
+                st.session_state.blur_image = apply_blur(st.session_state.original_pre_image, blur_type='Gaussian', blur_kernel=5)
+            if st.session_state.noise_image is None:
+                st.session_state.noise_image = apply_noise(st.session_state.original_pre_image, noise_type='Gaussian', noise_level=0.05)
+            if st.session_state.edge_image is None:
+                st.session_state.edge_image = apply_edge_detection(st.session_state.original_pre_image, edge_algorithm='Canny')
+            if st.session_state.color_space_image is None:
+                st.session_state.color_space_image = apply_color_space(st.session_state.original_pre_image, color_space='RGB')
+            if st.session_state.grayscale_image is None:
+                st.session_state.grayscale_image = apply_grayscale(st.session_state.original_pre_image)
+
+            # Display Preprocessed Images
+            preprocessings = [
                 {
                     'name': 'Resize',
+                    'image_key': 'resize_image',
                     'controls': resize_controls,
-                    'result_key': 'resize_image',
-                    'caption': '🔄 Resized Image'
+                    'caption': '📏 Resized Image'
                 },
                 {
                     'name': 'Contrast & Brightness Adjustment',
+                    'image_key': 'contrast_brightness_image',
                     'controls': contrast_brightness_controls,
-                    'result_key': 'contrast_brightness_image',
                     'caption': '⚖️ Contrast & Brightness Adjusted Image'
                 },
                 {
                     'name': 'Blurring',
+                    'image_key': 'blur_image',
                     'controls': blur_controls,
-                    'result_key': 'blur_image',
                     'caption': '🌀 Blurred Image'
                 },
                 {
                     'name': 'Noise Addition',
+                    'image_key': 'noise_image',
                     'controls': noise_addition_controls,
-                    'result_key': 'noise_image',
                     'caption': '🧂 Noise Added Image'
                 },
                 {
                     'name': 'Edge Detection',
+                    'image_key': 'edge_image',
                     'controls': edge_detection_controls,
-                    'result_key': 'edge_image',
                     'caption': '🔍 Edge Detected Image'
                 },
                 {
                     'name': 'Color Space Conversion',
+                    'image_key': 'color_space_image',
                     'controls': color_space_controls,
-                    'result_key': 'color_space_image',
                     'caption': '🎨 Color Space Image'
                 },
                 {
                     'name': 'Grayscale Conversion',
+                    'image_key': 'grayscale_image',
                     'controls': grayscale_controls,  # Added Grayscale Controls
-                    'result_key': 'grayscale_image',
                     'caption': '🖤 Grayscale Image'
                 }
             ]
 
-            # Arrange techniques in a grid layout (2 per row)
+            # Arrange preprocessings in a grid layout (2 per row)
             num_columns = 2
-            for i in range(0, len(techniques), num_columns):
+            for i in range(0, len(preprocessings), num_columns):
                 cols = st.columns(num_columns)
                 for j in range(num_columns):
-                    if i + j < len(techniques):
-                        technique = techniques[i + j]
+                    if i + j < len(preprocessings):
+                        preprocessing = preprocessings[i + j]
                         with cols[j]:
-                            st.markdown(f"### {technique['name']}")
-                            technique['controls']()
-                            if st.session_state[technique['result_key']] is not None:
-                                if technique['name'] == 'Color Space Conversion':
-                                    display_color_space_image(technique['result_key'], technique['caption'])
+                            st.markdown(f"### {preprocessing['name']}")
+                            preprocessing['controls']()
+                            if st.session_state[preprocessing['image_key']] is not None:
+                                if preprocessing['name'] == 'Color Space Conversion':
+                                    display_color_space_image(preprocessing['image_key'], preprocessing['caption'])
                                 else:
                                     st.image(
-                                        st.session_state[technique['result_key']],
-                                        caption=technique['caption'],
+                                        st.session_state[preprocessing['image_key']],
+                                        caption=preprocessing['caption'],
                                         use_container_width=True
                                     )
                                     # Download Button aligned with image
-                                    download_image_button(technique['result_key'], technique['name'], technique['caption'])
+                                    download_image_button(preprocessing['image_key'], preprocessing['name'], preprocessing['caption'])
 
             st.markdown("---")
 
@@ -254,16 +236,31 @@ def download_image_button(state_key, technique_name, caption):
     if img is not None:
         # Convert NumPy array to PIL Image
         img_pil = Image.fromarray(img)
+        # Allow user to select format
+        file_format = st.selectbox(
+            f"Select format for {technique_name} Image",
+            options=['PNG', 'JPEG'],
+            key=f"download_format_{technique_name}"
+        )
         # Save image to BytesIO
         buf = BytesIO()
-        img_pil.save(buf, format='PNG')
+        if file_format == 'PNG':
+            img_pil.save(buf, format='PNG')
+            mime_type = 'image/png'
+            file_ext = 'png'
+        else:
+            img_pil.save(buf, format='JPEG')
+            mime_type = 'image/jpeg'
+            file_ext = 'jpg'
         byte_im = buf.getvalue()
         st.download_button(
             label=f"📥 Download {technique_name} Image",
             data=byte_im,
-            file_name=f"{technique_name.lower().replace(' ', '_')}_image.png",
-            mime='image/png'
+            file_name=f"{technique_name.lower().replace(' ', '_')}_image.{file_ext}",
+            mime=mime_type
         )
+
+# Controls for each selected preprocessing technique
 
 def resize_controls():
     """Controls for Resize preprocessing."""
@@ -288,12 +285,12 @@ def resize_controls():
             key="resize_height",
             help="Enter the desired height for resizing the image."
         )
-    if st.button("Apply Resize", key="apply_resize_btn"):
+    if st.button("Reapply Resize", key="reapply_resize_btn"):
         try:
             st.session_state.resize_image = apply_resize(
-                st.session_state.original_image, resize_width, resize_height
+                st.session_state.original_pre_image, resize_width, resize_height
             )
-            # st.success(f"✅ Image resized to {resize_width}x{resize_height} pixels.")  # Removed
+            # Success message removed
         except Exception as e:
             st.error(f"Error resizing image: {e}")
 
@@ -320,12 +317,12 @@ def contrast_brightness_controls():
             key="brightness_beta_slider",
             help="Adjust the brightness of the image. β > 0 increases brightness."
         )
-    if st.button("Apply Contrast & Brightness", key="apply_contrast_brightness_btn"):
+    if st.button("Reapply Contrast & Brightness", key="reapply_contrast_brightness_btn"):
         try:
             st.session_state.contrast_brightness_image = apply_contrast_brightness(
-                st.session_state.original_image, contrast_alpha, brightness_beta
+                st.session_state.original_pre_image, contrast_alpha, brightness_beta
             )
-            # st.success(f"✅ Contrast (α={contrast_alpha}) and Brightness (β={brightness_beta}) adjusted.")  # Removed
+            # Success message removed
         except Exception as e:
             st.error(f"Error adjusting Contrast & Brightness: {e}")
 
@@ -347,12 +344,12 @@ def blur_controls():
             key="blur_kernel_size",
             help="Select the kernel size for blurring. Must be an odd number."
         )
-        if st.button(f"Apply {blur_type} Blur", key="apply_blur_btn"):
+        if st.button(f"Reapply {blur_type} Blur", key="reapply_blur_btn"):
             try:
                 st.session_state.blur_image = apply_blur(
-                    st.session_state.original_image, blur_type, blur_kernel
+                    st.session_state.original_pre_image, blur_type, blur_kernel
                 )
-                # st.success(f"✅ {blur_type} Blur applied with kernel size {blur_kernel}.")  # Removed
+                # Success message removed
             except Exception as e:
                 st.error(f"Error applying {blur_type} Blur: {e}")
 
@@ -374,18 +371,17 @@ def noise_addition_controls():
             key="noise_level_slider",
             help="Adjust the intensity of the noise to be added."
         )
-        if st.button(f"Apply {noise_type} Noise", key="apply_noise_btn"):
+        if st.button(f"Reapply {noise_type} Noise", key="reapply_noise_btn"):
             try:
                 if noise_type == 'Gaussian':
                     st.session_state.noise_image = apply_noise(
-                        st.session_state.original_image, noise_type='gaussian', noise_level=noise_level
+                        st.session_state.original_pre_image, noise_type='gaussian', noise_level=noise_level
                     )
-                    # st.success(f"✅ Gaussian Noise applied with level {noise_level}.")  # Removed
                 elif noise_type == 'Salt & Pepper':
                     st.session_state.noise_image = apply_salt_pepper_noise(
-                        st.session_state.original_image, noise_level=noise_level
+                        st.session_state.original_pre_image, noise_level=noise_level
                     )
-                    # st.success(f"✅ Salt & Pepper Noise applied with level {noise_level}.")  # Removed
+                # Success message removed
             except Exception as e:
                 st.error(f"Error applying {noise_type} Noise: {e}")
 
@@ -398,12 +394,12 @@ def edge_detection_controls():
         help="Choose the edge detection algorithm to apply."
     )
     if edge_algorithm != 'None':
-        if st.button(f"Apply {edge_algorithm} Edge Detection", key="apply_edge_btn"):
+        if st.button(f"Reapply {edge_algorithm} Edge Detection", key="reapply_edge_btn"):
             try:
                 st.session_state.edge_image = apply_edge_detection(
-                    st.session_state.original_image, edge_algorithm
+                    st.session_state.original_pre_image, edge_algorithm
                 )
-                # st.success(f"✅ {edge_algorithm} Edge Detection applied.")  # Removed
+                # Success message removed
             except Exception as e:
                 st.error(f"Error applying {edge_algorithm} Edge Detection: {e}")
 
@@ -416,20 +412,20 @@ def color_space_controls():
         help="Choose the color space to convert the image to."
     )
     if color_space != 'RGB':
-        if st.button(f"Apply {color_space} Color Space Conversion", key="apply_color_space_btn"):
+        if st.button(f"Reapply {color_space} Color Space Conversion", key="reapply_color_space_btn"):
             try:
                 st.session_state.color_space_image = apply_color_space(
-                    st.session_state.original_image, color_space
+                    st.session_state.original_pre_image, color_space
                 )
-                # st.success(f"✅ Color Space converted to {color_space}.")  # Removed
+                # Success message removed
             except Exception as e:
                 st.error(f"Error converting to {color_space} Color Space: {e}")
 
 def grayscale_controls():
     """Controls for Grayscale Conversion."""
-    if st.button("Apply Grayscale", key="apply_grayscale_btn"):
+    if st.button("Reapply Grayscale", key="reapply_grayscale_btn"):
         try:
-            st.session_state.grayscale_image = apply_grayscale(st.session_state.original_image)
-            # st.success("✅ Grayscale Conversion applied.")  # Removed
+            st.session_state.grayscale_image = apply_grayscale(st.session_state.original_pre_image)
+            # Success message removed
         except Exception as e:
             st.error(f"Error applying Grayscale Conversion: {e}")

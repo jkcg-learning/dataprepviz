@@ -1,148 +1,80 @@
+# utils/helpers.py
+
 import numpy as np
 import cv2
 import albumentations as A
 import streamlit as st
 
-def apply_noise(image, noise_type='gaussian', noise_level=0.05):
-    """
-    Apply noise to an image.
+# ======================
+# Preprocessing Functions
+# ======================
 
-    Parameters:
-        image (np.ndarray): The input image in RGB format.
-        noise_type (str): Type of noise to apply ('gaussian' or 'salt_pepper').
-        noise_level (float): The amount of noise to apply.
+@st.cache_data
+def apply_resize(image, width, height):
+    """Resize the image to the specified width and height."""
+    resized = cv2.resize(image, (width, height))
+    return resized
 
-    Returns:
-        np.ndarray: The noisy image in RGB format.
-    """
-    if noise_type == 'gaussian':
-        row, col, ch = image.shape
-        mean = 0
-        sigma = noise_level * 255
-        gauss = np.random.normal(mean, sigma, (row, col, ch))
-        noisy = image + gauss
-        return np.clip(noisy, 0, 255).astype(np.uint8)
-    elif noise_type == 'salt_pepper':
-        s_vs_p = 0.5
-        amount = noise_level
-        out = np.copy(image)
-        # Salt mode
-        num_salt = np.ceil(amount * image.size * s_vs_p)
-        for c in range(image.shape[2]):
-            coords = [np.random.randint(0, i - 1, int(num_salt)) for i in image.shape[:2]]
-            out[coords[0], coords[1], c] = 255
+@st.cache_data
+def apply_grayscale(image):
+    """Convert the image to grayscale."""
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    gray_rgb = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+    return gray_rgb
 
-        # Pepper mode
-        num_pepper = np.ceil(amount * image.size * (1.0 - s_vs_p))
-        for c in range(image.shape[2]):
-            coords = [np.random.randint(0, i - 1, int(num_pepper)) for i in image.shape[:2]]
-            out[coords[0], coords[1], c] = 0
-        return out
+@st.cache_data
+def apply_blur(image, blur_type, blur_kernel):
+    """Apply the specified blur to the image."""
+    if blur_type == 'Gaussian':
+        blurred = cv2.GaussianBlur(image, (blur_kernel, blur_kernel), 0)
+    elif blur_type == 'Median':
+        blurred = cv2.medianBlur(image, blur_kernel)
+    elif blur_type == 'Bilateral':
+        blurred = cv2.bilateralFilter(image, blur_kernel, 75, 75)
+    else:
+        blurred = image
+    return blurred
+
+@st.cache_data
+def apply_edge_detection(image, edge_algorithm):
+    """Apply the specified edge detection algorithm to the image."""
+    if edge_algorithm == 'Canny':
+        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+        edges = cv2.Canny(gray, 100, 200)
+        edges_rgb = cv2.cvtColor(edges, cv2.COLOR_GRAY2RGB)
+        return edges_rgb
+    elif edge_algorithm == 'Sobel':
+        return apply_sobel_edge_detection(image)
+    elif edge_algorithm == 'Laplacian':
+        return apply_laplacian_edge_detection(image)
+    else:
+        return image
+
+@st.cache_data
+def apply_contrast_brightness(image, alpha, beta):
+    """Adjust the contrast and brightness of the image."""
+    adjusted = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
+    return adjusted
+
+@st.cache_data
+def apply_color_space(image, color_space):
+    """Convert the image to the specified color space and back to RGB for display."""
+    color_spaces = {
+        'RGB': image,
+        'HSV': cv2.cvtColor(image, cv2.COLOR_RGB2HSV),
+        'LAB': cv2.cvtColor(image, cv2.COLOR_RGB2LAB),
+        'YCrCb': cv2.cvtColor(image, cv2.COLOR_RGB2YCrCb)
+    }
+    if color_space in color_spaces:
+        converted = color_spaces[color_space]
+        return converted
     return image
 
-def apply_salt_pepper_noise(image, noise_level=0.05):
-    """
-    Apply salt and pepper noise to the image.
-
-    Parameters:
-        image (np.ndarray): The input image in RGB format.
-        noise_level (float): The amount of noise to apply.
-
-    Returns:
-        np.ndarray: The noisy image in RGB format.
-    """
-    return apply_noise(image, noise_type='salt_pepper', noise_level=noise_level)
-
-def apply_sobel_edge_detection(image):
-    """
-    Apply Sobel edge detection to the image.
-
-    Parameters:
-        image (np.ndarray): The input image in RGB format.
-
-    Returns:
-        np.ndarray: The image with Sobel edges detected in RGB format.
-    """
-    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=5)
-    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=5)
-    sobel = cv2.magnitude(sobelx, sobely)
-    sobel = np.uint8(np.clip(sobel, 0, 255))
-    sobel_rgb = cv2.cvtColor(sobel, cv2.COLOR_GRAY2RGB)
-    return sobel_rgb
-
-def apply_laplacian_edge_detection(image):
-    """
-    Apply Laplacian edge detection to the image.
-
-    Parameters:
-        image (np.ndarray): The input image in RGB format.
-
-    Returns:
-        np.ndarray: The image with Laplacian edges detected in RGB format.
-    """
-    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-    laplacian = cv2.Laplacian(gray, cv2.CV_64F)
-    laplacian = np.uint8(np.absolute(laplacian))
-    laplacian_rgb = cv2.cvtColor(laplacian, cv2.COLOR_GRAY2RGB)
-    return laplacian_rgb
-
-def apply_vertical_flip(image):
-    """Flip the image vertically."""
-    return cv2.flip(image, 0)
-
-def apply_horizontal_flip(image):
-    """Flip the image horizontally."""
-    return cv2.flip(image, 1)
-
-def apply_rotation(image, angle):
-    """Rotate the image by the specified angle."""
-    (h, w) = image.shape[:2]
-    center = (w // 2, h // 2)
-    M = cv2.getRotationMatrix2D(center, angle, 1.0)
-    rotated = cv2.warpAffine(image, M, (w, h))
-    return rotated
-
-def apply_scaling(image, scale_factor):
-    """Scale the image by the specified scale factor."""
-    width = int(image.shape[1] * scale_factor)
-    height = int(image.shape[0] * scale_factor)
-    dim = (width, height)
-    scaled = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
-    return scaled
-
-def apply_brightness(image, brightness_level):
-    """Adjust the brightness of the image."""
-    brightness = brightness_level - 50  # Center at 0
-    bright_img = cv2.convertScaleAbs(image, alpha=1, beta=brightness)
-    return bright_img
-
-def apply_augmentation_noise(image, noise_type='gaussian', noise_level=0.05):
-    """Add noise to the image for augmentation purposes."""
-    if noise_type == 'gaussian':
-        row, col, ch = image.shape
-        mean = 0
-        sigma = noise_level * 255
-        gauss = np.random.normal(mean, sigma, (row, col, ch))
-        noisy = image + gauss
-        return np.clip(noisy, 0, 255).astype(np.uint8)
-    elif noise_type == 'salt_pepper':
-        s_vs_p = 0.5
-        amount = noise_level
-        out = np.copy(image)
-        # Salt mode
-        num_salt = np.ceil(amount * image.size * s_vs_p)
-        coords = [np.random.randint(0, i - 1, int(num_salt)) for i in image.shape[:2]]
-        for c in range(image.shape[2]):
-            out[coords[0], coords[1], c] = 255
-
-        # Pepper mode
-        num_pepper = np.ceil(amount * image.size * (1.0 - s_vs_p))
-        coords = [np.random.randint(0, i - 1, int(num_pepper)) for i in image.shape[:2]]
-        for c in range(image.shape[2]):
-            out[coords[0], coords[1], c] = 0
-        return out
-    return image
+@st.cache_data
+def apply_normalization(image):
+    """Normalize the image pixel values to the range [0, 255]."""
+    normalized = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX)
+    return normalized
 
 # ======================
 # Augmentation Functions
@@ -200,3 +132,57 @@ def apply_normalize(image):
     # Convert back to uint8 for display purposes
     augmented_image = (augmented['image'] * 255).astype(np.uint8)
     return augmented_image
+
+# ======================
+# Additional Helper Functions
+# ======================
+
+@st.cache_data
+def apply_noise(image, noise_type='gaussian', noise_level=0.05):
+    """Apply specified noise to the image."""
+    if noise_type == 'gaussian':
+        row, col, ch = image.shape
+        mean = 0
+        sigma = noise_level * 255
+        gauss = np.random.normal(mean, sigma, (row, col, ch))
+        noisy = image + gauss
+        return np.clip(noisy, 0, 255).astype(np.uint8)
+    elif noise_type == 'salt_pepper':
+        return apply_salt_pepper_noise(image, noise_level=noise_level)
+    return image
+
+@st.cache_data
+def apply_salt_pepper_noise(image, noise_level=0.05):
+    """Apply Salt & Pepper noise to the image."""
+    s_vs_p = 0.5
+    amount = noise_level
+    out = np.copy(image)
+    # Salt mode
+    num_salt = np.ceil(amount * image.size * s_vs_p)
+    coords = [np.random.randint(0, i - 1, int(num_salt)) for i in image.shape[:2]]
+    out[coords[0], coords[1], :] = 255
+    # Pepper mode
+    num_pepper = np.ceil(amount * image.size * (1.0 - s_vs_p))
+    coords = [np.random.randint(0, i - 1, int(num_pepper)) for i in image.shape[:2]]
+    out[coords[0], coords[1], :] = 0
+    return out
+
+@st.cache_data
+def apply_sobel_edge_detection(image):
+    """Apply Sobel edge detection to the image."""
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=5)
+    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=5)
+    sobel = cv2.magnitude(sobelx, sobely)
+    sobel = np.uint8(np.clip(sobel, 0, 255))
+    sobel_rgb = cv2.cvtColor(sobel, cv2.COLOR_GRAY2RGB)
+    return sobel_rgb
+
+@st.cache_data
+def apply_laplacian_edge_detection(image):
+    """Apply Laplacian edge detection to the image."""
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    laplacian = cv2.Laplacian(gray, cv2.CV_64F)
+    laplacian = np.uint8(np.absolute(laplacian))
+    laplacian_rgb = cv2.cvtColor(laplacian, cv2.COLOR_GRAY2RGB)
+    return laplacian_rgb

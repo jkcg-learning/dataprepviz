@@ -16,7 +16,6 @@ def main():
             image_preprocessing_tab()
         elif operation == "Augmentation":
             image_augmentation_tab()  
-            st.warning("🚧 Image Augmentation feature is under construction. Stay tuned!")
     else:
         st.warning("🚧 This feature is under construction. Stay tuned for updates!")
 
